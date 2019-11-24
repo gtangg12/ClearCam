@@ -6,17 +6,28 @@ In addition to the main pipeline, we also explore many different factors the pro
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+These instructions will allow you to run a demo of the main pipeline on MacOS.
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
+You must have the following libraries. To install them, run the folowing commands:
 
 ```
-Give examples
+pip3 install opencv-python
+pip3 install tensorflow
+pip3 install keras
+brew install cmake
+brew install opencv
 ```
 
-End with an example of getting some data out of the system or using it for a little demo
+In addition, MacOS lacks the #include <bits/stdc++.h> header. Do the following to add it
+
+```
+cd /usr/local/include/
+mkdir bits
+```
+
+Copy the file from here: https://gist.github.com/reza-ryte-club/97c39f35dab0c45a5d924dd9e50c445f.
 
 ### Running Demo
 ```
