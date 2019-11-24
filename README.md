@@ -27,7 +27,7 @@ cd /usr/local/include/
 mkdir bits
 ```
 
-Copy the file from here: https://gist.github.com/reza-ryte-club/97c39f35dab0c45a5d924dd9e50c445f.
+Copy the file from here into bits: https://gist.github.com/reza-ryte-club/97c39f35dab0c45a5d924dd9e50c445f.
 
 ### Running Demo
 ```
