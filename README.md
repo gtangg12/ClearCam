@@ -34,6 +34,8 @@ Copy the file from here: https://gist.github.com/reza-ryte-club/97c39f35dab0c45a
 sh run.txt
 ```
 
+This will compute the disparity map from the stereo images in demo/. The result will be displayed; press return to continue. Now, the parameters will be estimated using the model from final_model/. The hazy_image, dehazed image, and clear reference (right image of stereo images) will be displayed. If you only see one image, the others are hidden behind it, so just drag them apart. 
+
 ## Project Outline
 
 ### main.cpp
