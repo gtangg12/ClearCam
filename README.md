@@ -34,19 +34,25 @@ Copy the file from here: https://gist.github.com/reza-ryte-club/97c39f35dab0c45a
 sh run.txt
 ```
 
-This will compute the disparity map from the stereo images in demo/. The result will be displayed; press return to continue. Now, the parameters will be estimated using the model from final_model/. The hazy_image, dehazed image, and clear reference (right image of stereo images) will be displayed. If you only see one image, the others are hidden behind it, so just drag them apart. 
+This will compute the disparity map from the stereo images in demo/. The result will be displayed; press return to continue. Now, the parameters will be estimated using the model from final_model/. The hazy image, dehazed image, and clear reference (right image of stereo images) will be displayed. If you only see one image, the others are hidden behind it, so just drag them apart. 
 
 ## Project Outline
 
 ### main.cpp
+Computes the disparity from stereo images.
 
 ### stereo_data
+Contains the Middlebury 2006 Dataset that we used to syntheize hazy data, which are stored in hazy images. The respective computed disparity maps you see in project.pdf can be found in disparity maps.
 
 ### final_model
+Contains the code for and the final machine learning model we used in estimating the beta parameter.
 
 ### parameter_fitting
+Contains code of different machine learning approaches to beta estimation. 
 
 ### outdoor
+Contains code of non machine learning approaches to beta estimation that is better suited in outdoor conditions.
 
 ### middlebury_haze
+Contains code for synthezing haze into clear references as well as approaches to synthesize non-homogeneous fog via noise insertion.
 
