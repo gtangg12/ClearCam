@@ -4,15 +4,15 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/Users/mmreed/Documents/CS/Dehaze/main.cpp" "/Users/mmreed/Documents/CS/Dehaze/CMakeFiles/main.dir/main.cpp.o"
+  "/Users/gtangg12/Desktop/Dehaze/main.cpp" "/Users/gtangg12/Desktop/Dehaze/CMakeFiles/main.dir/main.cpp.o"
   )
-set(CMAKE_CXX_COMPILER_ID "Clang")
+set(CMAKE_CXX_COMPILER_ID "AppleClang")
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
+  "/usr/local/Cellar/gsl/2.6/include"
   "/usr/local/include"
-  "/usr/local/include/opencv"
-  "/usr/local/Cellar/gsl/2.5/include"
+  "/usr/local/Cellar/opencv/4.1.2/include/opencv4"
   )
 
 # Targets to which this target links.

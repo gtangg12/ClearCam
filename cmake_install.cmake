@@ -1,4 +1,4 @@
-# Install script for directory: /Users/mmreed/Documents/CS/Dehaze
+# Install script for directory: /Users/gtangg12/Desktop/Dehaze
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -40,5 +40,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/mmreed/Documents/CS/Dehaze/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/gtangg12/Desktop/Dehaze/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

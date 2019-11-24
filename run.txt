@@ -1,3 +1,4 @@
 make
 ./main
-python3 demo.py
+cd demo
+python3 solve.py

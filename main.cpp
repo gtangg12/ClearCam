@@ -1,14 +1,37 @@
+/**
+  main.cpp takes a pair of hazy stereo images, computes the dispairty
+  map using 4-state dynammic programming, and runs our proposed post-processing
+  algorithm that enhances disparity map quality, which degrades in haze.
+
+  @author George Tang
+*/
+
 #include <bits/stdc++.h>
 #include <opencv2/opencv.hpp>
 using namespace std;
-#define ROWS 370
-#define COLS 425
-#define FMAX 64 // COLS/4
+
+/**
+  Image processing constants:
+
+  @const SZ, WS match function patch dim (WS = 2*SZ+1)
+  @const ROWS, COLS image dim
+  @const FMAX max dispairty constant (COLS/4 is sufficent)
+  @const WDTH num of cols involved in processing (COLS-2*SZ)
+  @const INF not INT_MAX b/c need to support addition
+*/
 #define SZ 2
-#define WS 5 // 2*SZ+1 = conv size
-#define WDTH 421 // COLS-2*SZ
+#define WS 5
+#define ROWS 370
+#define COLS 410
+#define FMAX 64
+#define WDTH 406
 #define INF 100000.0
 
+/**
+  toArray writes opencv color image to 3-channel image array
+  toImage writes 3-channel image array to opencv color image
+  norm normalizes 1-channel image array
+*/
 void toArray(float (&dst)[ROWS][COLS][3], cv::Mat &src) {
    for (int i=0; i<ROWS; i++)
       for (int j=0; j<COLS; j++) {
@@ -37,7 +60,14 @@ void norm(float (&img)[ROWS][COLS]) {
          img[i][j]=max(0.0, min(255.0, img[i][j]*255.0));
 }
 
-// Statistics Functions
+/**
+  mean computes mean of crop
+  stdv computes standard deviation of the crop given mean
+
+  @param r, c top left corner of crop
+  @param ch channel of crop
+  @param m mean of crop
+*/
 float mean(float (&img)[ROWS][COLS][3], int r, int c, int ch) {
    float sum = 0;
    for (int i=r; i<r+WS; i++)
@@ -54,6 +84,16 @@ float stdv(float (&img)[ROWS][COLS][3], float m, int r, int c, int ch) {
    return sqrt(sum/(WS*WS));
 }
 
+/**
+  Match function. Computes dissimilarity score between two crops in the form of
+  0.5*(1-NCC), where NCC is the normalized cross-corelation
+
+  @param img_a, img_b two images involved
+  @param ra, ca top left corner of crop from img_a
+  @param rb, cb top left corner of crop from img_b
+  @param ch channel of crops
+  @return value in [0, 1], 1 indicates maximum dissimilarity
+*/
 float dncc(float (&img_a)[ROWS][COLS][3], float (&img_b)[ROWS][COLS][3], int ra, int ca, int rb, int cb, int ch) {
    float p1m, p2m, product;
    p1m = mean(img_a, ra, ca, ch);
@@ -69,10 +109,23 @@ float dncc(float (&img_a)[ROWS][COLS][3], float (&img_b)[ROWS][COLS][3], int ra,
    return 0.5*(1.0-product);
 }
 
-// Stereo Algorithm
+/**
+  cost stores the match scores of patches with top left corner at the pixels (r-SZ, c)
+  and (r-SZ, c+d) corresponding to cost array indicies (r, c, 0) and (r, c, d).
+  Each r defines a 2D matrix of size (WDTH+1, FMAX+1) called a disparity space
+  image (DSI). Note r in [0, SZ), [ROWS-SZ, ROWS) are not used as patch would be
+  out of bounds.
+*/
 float cost[ROWS][WDTH+1][FMAX+1];
-float costblur[ROWS][WDTH+1][FMAX+1];
-float T = 240;
+
+/**
+  Given row that defines a DSI, computes and stores match score of every pixel
+  with top left corner (r-SZ, c) with their possible matching pixels (r-SZ, c+d)
+  by averaging dncc across all channels.
+
+  @param img_a, img_b two images involved
+  @param r given row in [SZ, ROWS-SZ) that defines DSI
+*/
 void computeCost(float (&img_a)[ROWS][COLS][3], float (&img_b)[ROWS][COLS][3], int r) {
    for (int i=0; i<=WDTH; i++)
       for (int j=0; j<=FMAX; j++) { // col1 = s+i, col2 = min(s+i+j, COLS-s)
@@ -87,12 +140,25 @@ void computeCost(float (&img_a)[ROWS][COLS][3], float (&img_b)[ROWS][COLS][3], i
       }
 }
 
+/**
+  @const RW, CW defines (2*RW+1, 2*CW+1) gaussian blur convolution
+  gr, gc contain the values of the seperable convolution
+  costblur stores the result after reducing streaking by passing a gaussian blur
+  along the diagonal of stacked DSIs in cost
+*/
 #define RW 3
 #define CW 1
 float gr[2*RW+1] = {0.106595, 0.140367, 0.165569, 0.174938, 0.165569, 0.140367, 0.106595};
 float gc[2*CW+1] = {0.319466, 0.361069, 0.319466};
+float costblur[ROWS][WDTH+1][FMAX+1];
 
-void blur(int r) { // seperable 2D convolution
+/**
+  Given diagonal of stacked DSIs stored in cost defined by row, applies seperable
+  guassian blur to diagonal to reduce streaking
+
+  @param r given row that defines diagonal
+*/
+void blur(int r) {
    float temp[WDTH+1][FMAX+1];
    for (int k=0; k<=FMAX; k++) {
       for (int j=0; j<=WDTH; j++) {
@@ -118,11 +184,22 @@ void blur(int r) { // seperable 2D convolution
    }
 }
 
+/**
+  @const A, B, Y parameters for 4-state dynammic programming
+  dp is the tabulation array. The 4 channels are LO, LM, RM, RO.
+*/
 #define A 0.7
 #define B 1.0
 #define Y 0.25
-float dp[4][ROWS][WDTH+1][FMAX+1]; // LO, LM, RM, RO
+float dp[4][ROWS][WDTH+1][FMAX+1];
 
+/**
+  Given row that defines DSI, performs 4-state dyanmmic programming and reconstructs
+  the min-cost path to get the disparity values for given row
+
+  @param dis disparity map to write to
+  @param r given row that defines DSI
+*/
 void reconstruct(float (&dis)[ROWS][COLS], int r) {
    int par[4][WDTH+1][FMAX+1];
    memset(par, 0, sizeof(int)*4*(WDTH+1)*(FMAX+1));
@@ -207,6 +284,15 @@ void reconstruct(float (&dis)[ROWS][COLS], int r) {
       }
 }
 
+/**
+  TODO: implement process on CUDA
+
+  Computes DSIs, blurs DSIs, and then executes 4-state dynammic programming. Each
+  step is embrassingly parallel.
+
+  @param img_a, img_b two images involved
+  @param dis disparity map to write to
+*/
 void dismap(float (&img_a)[ROWS][COLS][3], float (&img_b)[ROWS][COLS][3], float (&dis)[ROWS][COLS]) {
    memset(cost, 0, sizeof(float)*ROWS*(WDTH+1)*(FMAX+1));
    memset(costblur, 0, sizeof(float)*ROWS*(WDTH+1)*(FMAX+1));
@@ -218,16 +304,35 @@ void dismap(float (&img_a)[ROWS][COLS][3], float (&img_b)[ROWS][COLS][3], float 
       reconstruct(dis, i);
 }
 
-// Proposed Algorithm
+/**
+  @const MAXC max number of components able to handle
+  @const K max size of row/cols. Used for iterative dfs when labeling components
+  dr, dc define unit vectors in the cardinal directions
+*/
 #define MAXC 10000
 int K = 1000;
 int dr[4] = {0, -1, 0, 1};
 int dc[4] = {-1, 0, 1, 0};
 
+/**
+  cnt stores pixel intensity histograms for each component
+  label stores the component label of each pixel
+  vis is used in the iterative dfs
+*/
 int cnt[MAXC][256];
 int label[ROWS][COLS];
 bool vis[ROWS][COLS];
 
+/**
+  Proposed post-processing algorithm. First performs edge detection and labels
+  components based on edges. Each component should have either 1) similiar disparities
+  or 2) varying disparities. Histograms of each component are refined and final
+  disparity map is determined. Disparity maps are of better quality that just
+  dynammic programming.
+
+  @param dis disparity map
+  @param img hazy image to compute edge map from
+*/
 void blob(float (&dis)[ROWS][COLS], cv::Mat img) {
    // edge detection
    cv::Mat em;
@@ -280,7 +385,6 @@ void blob(float (&dis)[ROWS][COLS], cv::Mat img) {
    // every component's dispairty is voted on by most pixels in region
    int mean[MAXC], lb[MAXC], ub[MAXC];
    int SW = 20;
-   //cout << cmp << endl;
    for (int i=0; i<cmp; i++) {
       int psum[256];
       psum[0] = 0;
@@ -328,41 +432,64 @@ void blob(float (&dis)[ROWS][COLS], cv::Mat img) {
       }
 }
 
-string names[21] = {"Aloe", "Rocks2", "Monopoly", "Midd1", "Bowling1", "Cloth3", "Cloth4", "Baby1", "Cloth2",
+/**
+  Given stereo images, compute disparity map
+*/
+void run(string src_folder, string dst_folder, string name, int cnt) {
+  // read stereo from source and initalize image arrays
+  cv::Mat li, ri;
+  li = cv::imread(src_folder+"/"+name+"_"+to_string(cnt)+"_0.png", cv::IMREAD_COLOR);
+  ri = cv::imread(src_folder+"/"+name+"_"+to_string(cnt)+"_1.png", cv::IMREAD_COLOR);
+  //cout << "Rows: " << li.rows << ' ' << "Cols: " << li.cols << endl;
+  float left_img[ROWS][COLS][3], right_img[ROWS][COLS][3], dis[ROWS][COLS];
+  memset(dis, 0, sizeof(float)*ROWS*COLS);
+  toArray(left_img, li);
+  toArray(right_img, ri);
+  // compute disparity map
+  dismap(right_img, left_img, dis);
+  norm(dis);
+  blob(dis, ri);
+  // write disparity map to destination
+  float final[ROWS][COLS][3];
+  for (int i=0; i<ROWS; i++)
+    for (int j=0; j<COLS; j++)
+      for (int k=0; k<3; k++)
+        final[i][j][k] = dis[i][j];
+  cv::Mat ans(ROWS, COLS, CV_8UC3, cv::Scalar(0, 0, 0));
+  toImage(final, ans);
+  //cv::imshow("Frame"+to_string(cnt), ans);
+  //cv::waitKey(0);
+  cv::imwrite(dst_folder+"/"+name+"?"+to_string(cnt)+".png", ans);
+}
+
+/**
+  hazy_images stereo data
+*/
+string names[19] = {"Aloe", "Rocks2", "Midd1", "Bowling1", "Cloth3", "Cloth4", "Baby1",
                     "Lampshade1", "Wood2", "Rocks1", "Midd2", "Flowerpots", "Bowling2", "Baby2", "Baby3",
                     "Plastic", "Cloth1", "Wood1", "Lampshade2"};
-void run(int cnt, string folder, string name) {
-   cv::Mat li, ri;
-   li = cv::imread(folder+"/"+name+"?"+to_string(cnt)+"?0.png", CV_LOAD_IMAGE_COLOR);
-   ri = cv::imread(folder+"/"+name+"?"+to_string(cnt)+"?1.png", CV_LOAD_IMAGE_COLOR);
-   cout << "Rows: " << li.rows << ' ' << "Cols: " << li.cols << endl;
-   float left_img[ROWS][COLS][3], right_img[ROWS][COLS][3], dis[ROWS][COLS];
-   memset(dis, 0, sizeof(float)*ROWS*COLS);
-   toArray(left_img, li);
-   toArray(right_img, ri);
-   dismap(right_img, left_img, dis);
-   norm(dis);
-   cout << "Disparity Map Refinement Begin" << endl;
-   blob(dis, ri);
-   cout << "Disparity Map Refinement End" << endl;
-   float final[ROWS][COLS][3];
-   for (int i=0; i<ROWS; i++)
-      for (int j=0; j<COLS; j++)
-         for (int k=0; k<3; k++)
-            final[i][j][k] = dis[i][j];
-   cv::Mat ans(ROWS, COLS, CV_8UC3, cv::Scalar(0, 0, 0));
-   toImage(final, ans);
-   cv::imshow("Frame"+to_string(cnt), ans);
-   cv::waitKey(0);
-   cv::imwrite("DEMO/DIS/"+name+"?"+to_string(cnt)+".png", ans);
+/**
+  Compute disparity maps for all stereo images in stereo_data/hazy_images
+*/
+void computeDismaps() {
+  for (int s=0; s<19; s++)
+    for (int c=0; c<10; c++) {
+      cout << s << endl;
+      run("stereo_data/hazy_images", "stereo_data/disparity_maps", names[s], c);
+    }
+}
+
+/**
+  Run demo; stores dimap in demo/dismaps. Note demo is not run in parallel.
+*/
+void runDemo() {
+  cout << "Computing Disparity Map" << endl;
+  run("demo", "demo/dismaps", "rocks", 0);
+  cv::imshow("Demo_Dismap", cv::imread("demo/dismaps/rocks?0.png", 1));
+  cv::waitKey(0);
 }
 
 int main() {
-   /*for (int s=0; s<21; s++)
-      for (int c=0; c<10; c++) {
-         cout << c << endl;
-         run("HazyImages", c, "Lampshade2");
-      }*/
-   cout << "Computing Disparity Map" << endl;
-   run(0, "Demo", "rocks");
+  //computeDismaps();
+  runDemo();
 }
