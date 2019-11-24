@@ -42,7 +42,7 @@ This will compute the disparity map from the stereo images in demo/. The result 
 Computes the disparity from stereo images.
 
 ### stereo_data
-Contains the Middlebury 2006 Dataset that we used to syntheize hazy data, which are stored in hazy_images. The respective computed disparity maps you see in project.pdf can be found in disparity maps.
+Contains the Middlebury 2006 Dataset that we used to syntheize hazy data, which are stored in hazy_images/. The respective computed disparity maps you see in project.pdf can be found in disparity_maps/.
 
 ### final_model
 Contains the code for and the final machine learning model we used in estimating the beta parameter.
