@@ -1,3 +1,0 @@
-/Users/gtangg12/Desktop/Dehaze/CMakeFiles/rebuild_cache.dir
-/Users/gtangg12/Desktop/Dehaze/CMakeFiles/edit_cache.dir
-/Users/gtangg12/Desktop/Dehaze/CMakeFiles/main.dir
