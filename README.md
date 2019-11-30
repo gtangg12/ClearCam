@@ -31,6 +31,7 @@ Copy the file from here into bits: https://gist.github.com/reza-ryte-club/97c39f
 Next do
 ```
 cmake .
+make
 ```
 
 ### Running Demo
