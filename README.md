@@ -44,7 +44,7 @@ This will compute the disparity map from the stereo images in demo/. The result 
 ## Project Outline
 
 ### main.cpp
-Computes the disparity from stereo images.
+Computes the disparity from stereo images. Cuda version will be uploaded when I figure out how to get Nvidia GPU to work with MacOS Mojave.
 
 ### stereo_data
 Contains the Middlebury 2006 Dataset that we used to syntheize hazy data, which are stored in hazy_images/. The respective computed disparity maps you see in project.pdf can be found in disparity_maps/.
